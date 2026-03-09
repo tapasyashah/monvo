@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Trash2, Loader2 } from "lucide-react";
 
 export default function DeleteStatementButton({ id }: { id: string }) {
   const [deleting, setDeleting] = useState(false);
@@ -29,9 +30,14 @@ export default function DeleteStatementButton({ id }: { id: string }) {
     <button
       onClick={handleDelete}
       disabled={deleting}
-      className="rounded px-2 py-1 text-xs text-neutral-500 transition-colors hover:bg-red-900/30 hover:text-red-400 disabled:opacity-40"
+      aria-label="Delete statement"
+      className="inline-flex items-center justify-center rounded-lg p-1.5 text-[var(--muted-foreground)] transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
     >
-      {deleting ? "Deleting\u2026" : "Delete"}
+      {deleting ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <Trash2 className="size-4" />
+      )}
     </button>
   );
 }

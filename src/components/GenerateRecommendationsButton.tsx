@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2, Sparkles } from "lucide-react";
 
 export default function GenerateRecommendationsButton() {
   const router = useRouter();
@@ -27,9 +28,19 @@ export default function GenerateRecommendationsButton() {
       <button
         onClick={handleGenerate}
         disabled={loading}
-        className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[var(--primary)]/20 transition-all hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {loading ? "Generating…" : "Generate Recommendations"}
+        {loading ? (
+          <>
+            <Loader2 className="size-4 animate-spin" />
+            Generating…
+          </>
+        ) : (
+          <>
+            <Sparkles className="size-4" />
+            Generate Recommendations
+          </>
+        )}
       </button>
       {error && <p className="text-xs text-red-400">{error}</p>}
     </div>

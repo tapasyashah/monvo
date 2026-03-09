@@ -1,5 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import UploadStatement from "@/components/UploadStatement";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { NumberTicker } from "@/components/ui/number-ticker";
+import { FileText, ArrowLeftRight, Sparkles, Upload } from "lucide-react";
 
 export default async function DashboardPage(): Promise<React.JSX.Element> {
   const supabase = await createSupabaseServerClient();
@@ -22,79 +25,100 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
   const recommendationCount = recommendationsResult.count ?? 0;
 
   const stats = [
-    { label: "Statements", value: `${statementCount} uploaded` },
-    { label: "Transactions", value: `${transactionCount} extracted` },
-    { label: "Recommendations", value: `${recommendationCount} available` },
+    {
+      label: "Statements",
+      value: statementCount,
+      sub: "uploaded",
+      icon: FileText,
+      color: "text-[var(--primary)]",
+      bg: "bg-[var(--primary)]/10",
+    },
+    {
+      label: "Transactions",
+      value: transactionCount,
+      sub: "extracted",
+      icon: ArrowLeftRight,
+      color: "text-[var(--accent)]",
+      bg: "bg-[var(--accent)]/10",
+    },
+    {
+      label: "Recommendations",
+      value: recommendationCount,
+      sub: "available",
+      icon: Sparkles,
+      color: "text-amber-400",
+      bg: "bg-amber-400/10",
+    },
   ];
 
+  const firstName = email.split("@")[0];
+
   return (
-    <div className="min-h-screen bg-neutral-950 p-6 md:p-10">
-      <div className="mx-auto max-w-4xl space-y-10">
-        {/* Greeting */}
-        <header className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">
-            Welcome, {email}
+    <div className="min-h-screen p-6 md:p-10">
+      <div className="mx-auto max-w-5xl space-y-8">
+        {/* Header */}
+        <header className="space-y-1 pt-2">
+          <h1 className="text-3xl font-semibold tracking-tight text-[var(--foreground)]">
+            Good day,{" "}
+            <span className="text-[var(--primary)]">{firstName}</span>
           </h1>
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-[var(--muted-foreground)]">
             Here&apos;s your financial overview
           </p>
         </header>
 
         {/* Stat cards */}
-        <section>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {stats.map((stat) => (
-              <div
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {stats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <Card
                 key={stat.label}
-                className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5"
+                className="border-[var(--border)] bg-[var(--card)] transition-colors hover:border-[var(--primary)]/30"
               >
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
-                  {stat.label}
-                </p>
-                <p className="mt-2 text-2xl font-semibold text-neutral-50">
-                  {stat.value.split(" ")[0]}
-                </p>
-                <p className="mt-0.5 text-xs text-neutral-500">
-                  {stat.value.split(" ").slice(1).join(" ")}
-                </p>
-              </div>
-            ))}
-          </div>
+                <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
+                  <CardTitle className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
+                    {stat.label}
+                  </CardTitle>
+                  <div className={`rounded-lg p-2 ${stat.bg}`}>
+                    <Icon className={`size-4 ${stat.color}`} />
+                  </div>
+                </CardHeader>
+                <CardContent className="px-5 pb-5">
+                  <div className="text-3xl font-bold text-[var(--foreground)] tabular-nums">
+                    <NumberTicker value={stat.value} />
+                  </div>
+                  <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+                    {stat.sub}
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </section>
 
         {/* Upload section */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900 p-8 text-center">
-          {/* Upload icon */}
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-neutral-700 bg-neutral-800">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-neutral-400"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-          </div>
-
-          <h2 className="text-base font-semibold text-neutral-100">
-            Upload your first statement
-          </h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-neutral-400">
-            Drop in a PDF from CIBC, TD, RBC, or any Canadian bank. We&apos;ll
-            handle the rest.
-          </p>
-
-          <div className="mt-6 text-left">
-            <UploadStatement />
-          </div>
+        <section>
+          <Card className="border-[var(--border)] bg-[var(--card)]">
+            <CardHeader className="px-8 pt-8 pb-0">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-[var(--primary)]/10">
+                  <Upload className="size-5 text-[var(--primary)]" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-semibold text-[var(--foreground)]">
+                    Upload a statement
+                  </CardTitle>
+                  <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">
+                    Supports CIBC chequing, savings &amp; Visa · American Express
+                  </p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-8 pb-8 pt-6">
+              <UploadStatement />
+            </CardContent>
+          </Card>
         </section>
       </div>
     </div>

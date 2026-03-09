@@ -1,6 +1,15 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Upload, Loader2, CheckCircle2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 type Status = "idle" | "uploading" | "done" | "error";
 type AccountType = "chequing" | "savings" | "credit_card";
@@ -15,7 +24,6 @@ export default function UploadStatement(): React.JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const isUploading = status === "uploading";
 
   function handleFileSelect(selected: File | null): void {
@@ -49,7 +57,6 @@ export default function UploadStatement(): React.JSX.Element {
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>): void {
     const selected = e.target.files?.[0] ?? null;
     handleFileSelect(selected);
-    // Reset so re-selecting the same file fires onChange again
     e.target.value = "";
   }
 
@@ -90,67 +97,71 @@ export default function UploadStatement(): React.JSX.Element {
 
   if (status === "done") {
     return (
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-        <p className="text-sm font-semibold text-emerald-400">
-          {transactionCount} transaction{transactionCount !== 1 ? "s" : ""} imported
-        </p>
-        <button
-          type="button"
-          onClick={handleReset}
-          className="mt-3 text-xs text-neutral-400 underline underline-offset-2 hover:text-neutral-200 transition-colors"
-        >
-          Upload another
-        </button>
+      <div className="flex items-start gap-3 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 p-4">
+        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-[var(--accent)]" />
+        <div>
+          <p className="text-sm font-semibold text-[var(--accent)]">
+            {transactionCount} transaction{transactionCount !== 1 ? "s" : ""} imported
+          </p>
+          <button
+            type="button"
+            onClick={handleReset}
+            className="mt-1 text-xs text-[var(--muted-foreground)] underline underline-offset-2 hover:text-[var(--foreground)] transition-colors"
+          >
+            Upload another
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 space-y-5">
-      {/* Institution */}
-      <div className="space-y-1.5">
-        <label
-          htmlFor="upload-institution"
-          className="block text-xs font-semibold uppercase tracking-widest text-neutral-400"
-        >
-          Institution
-        </label>
-        <select
-          id="upload-institution"
-          value={institution}
-          onChange={(e) => setInstitution(e.target.value)}
-          disabled={isUploading}
-          className="bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm px-3 py-2 w-full disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-        >
-          <option value="CIBC">CIBC</option>
-          <option value="Amex">Amex</option>
-        </select>
-      </div>
+    <div className="space-y-5">
+      {/* Selects row */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">
+            Institution
+          </label>
+          <Select
+            value={institution}
+            onValueChange={(v) => { if (v !== null) setInstitution(v); }}
+            disabled={isUploading}
+          >
+            <SelectTrigger className="w-full border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)]">
+              <SelectValue placeholder="Select institution" />
+            </SelectTrigger>
+            <SelectContent className="border-[var(--border)] bg-[var(--card)]">
+              <SelectItem value="CIBC">CIBC</SelectItem>
+              <SelectItem value="Amex">Amex</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-      {/* Account type */}
-      <div className="space-y-1.5">
-        <label
-          htmlFor="upload-account-type"
-          className="block text-xs font-semibold uppercase tracking-widest text-neutral-400"
-        >
-          Account Type
-        </label>
-        <select
-          id="upload-account-type"
-          value={accountType}
-          onChange={(e) => setAccountType(e.target.value as AccountType)}
-          disabled={isUploading}
-          className="bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 text-sm px-3 py-2 w-full disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-        >
-          <option value="chequing">Chequing</option>
-          <option value="savings">Savings</option>
-          <option value="credit_card">Credit Card</option>
-        </select>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">
+            Account Type
+          </label>
+          <Select
+            value={accountType}
+            onValueChange={(v) => setAccountType(v as AccountType)}
+            disabled={isUploading}
+          >
+            <SelectTrigger className="w-full border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)]">
+              <SelectValue placeholder="Select account type" />
+            </SelectTrigger>
+            <SelectContent className="border-[var(--border)] bg-[var(--card)]">
+              <SelectItem value="chequing">Chequing</SelectItem>
+              <SelectItem value="savings">Savings</SelectItem>
+              <SelectItem value="credit_card">Credit Card</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Dropzone */}
       <div className="space-y-1.5">
-        <p className="block text-xs font-semibold uppercase tracking-widest text-neutral-400">
+        <p className="block text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">
           Statement PDF
         </p>
         <div
@@ -166,52 +177,36 @@ export default function UploadStatement(): React.JSX.Element {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={[
-            "border-2 border-dashed rounded-xl p-8 text-center transition-colors",
+          className={cn(
+            "relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-8 py-10 text-center transition-all duration-200",
             isUploading
-              ? "cursor-not-allowed opacity-50 border-neutral-700"
-              : "cursor-pointer",
-            isDragging && !isUploading
-              ? "border-neutral-400 bg-neutral-800/50"
-              : !isUploading
-              ? "border-neutral-700 hover:border-neutral-500"
-              : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
+              ? "cursor-not-allowed opacity-50 border-[var(--border)]"
+              : isDragging
+              ? "cursor-copy border-[var(--primary)] bg-[var(--primary)]/5"
+              : "cursor-pointer border-[var(--border)] hover:border-[var(--primary)]/50 hover:bg-[var(--secondary)]",
+          )}
         >
-          {/* Upload icon */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="28"
-            height="28"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="mx-auto mb-3 text-neutral-500"
-            aria-hidden="true"
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-
+          <Upload
+            className={cn(
+              "size-7 transition-colors",
+              isDragging
+                ? "text-[var(--primary)]"
+                : "text-[var(--muted-foreground)]",
+            )}
+          />
           {file ? (
-            <p className="text-sm text-neutral-200 font-medium truncate max-w-xs mx-auto">
+            <p className="max-w-xs truncate text-sm font-medium text-[var(--foreground)]">
               {file.name}
             </p>
           ) : (
             <>
-              <p className="text-sm text-neutral-300">
+              <p className="text-sm text-[var(--muted-foreground)]">
                 Drop a PDF here, or{" "}
-                <span className="text-neutral-100 underline underline-offset-2">
+                <span className="text-[var(--primary)] underline underline-offset-2">
                   browse
                 </span>
               </p>
-              <p className="mt-1 text-xs text-neutral-600">PDF only</p>
+              <p className="text-xs text-[var(--muted-foreground)]/60">PDF only</p>
             </>
           )}
         </div>
@@ -226,7 +221,7 @@ export default function UploadStatement(): React.JSX.Element {
         />
       </div>
 
-      {/* Error message */}
+      {/* Error */}
       {status === "error" && errorMessage && (
         <p className="text-sm text-red-400">{errorMessage}</p>
       )}
@@ -236,36 +231,23 @@ export default function UploadStatement(): React.JSX.Element {
         type="button"
         onClick={() => void handleUpload()}
         disabled={!file || isUploading}
-        className="bg-white text-neutral-950 font-semibold rounded-lg px-5 py-2.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed w-full flex items-center justify-center gap-2 transition-opacity"
+        className={cn(
+          "flex w-full items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all duration-200",
+          "bg-[var(--primary)] text-white shadow-lg shadow-[var(--primary)]/20",
+          "hover:opacity-90 active:scale-[0.99]",
+          "disabled:cursor-not-allowed disabled:opacity-40",
+        )}
       >
         {isUploading ? (
           <>
-            {/* Inline spinner */}
-            <svg
-              className="animate-spin h-4 w-4 text-neutral-600"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
+            <Loader2 className="size-4 animate-spin" />
             Uploading...
           </>
         ) : (
-          "Upload & Extract"
+          <>
+            <Upload className="size-4" />
+            Upload &amp; Extract
+          </>
         )}
       </button>
     </div>

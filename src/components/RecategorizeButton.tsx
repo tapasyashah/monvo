@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Tag, Loader2 } from "lucide-react";
 
 export default function RecategorizeButton({ uncategorizedCount }: { uncategorizedCount: number }) {
   const router = useRouter();
@@ -28,25 +31,34 @@ export default function RecategorizeButton({ uncategorizedCount }: { uncategoriz
   if (done) return null;
 
   return (
-    <div className="rounded-2xl border border-amber-800/50 bg-amber-950/30 px-5 py-4">
-      <div className="flex items-center justify-between gap-4">
+    <Alert className="border-amber-500/30 bg-amber-500/10">
+      <Tag className="size-4 text-amber-400" />
+      <AlertDescription className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-amber-200">
+          <span className="font-medium text-amber-300">
             {uncategorizedCount} transaction{uncategorizedCount !== 1 ? "s" : ""} need categorizing
-          </p>
-          <p className="mt-0.5 text-xs text-amber-400/70">
-            These were imported before auto-categorization was enabled. Click to fix them now.
-          </p>
+          </span>
+          <span className="ml-2 text-xs text-amber-400/70">
+            These were imported before auto-categorization was enabled.
+          </span>
         </div>
-        <button
+        <Button
+          size="sm"
           onClick={handleCategorize}
           disabled={loading}
-          className="shrink-0 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="shrink-0 bg-amber-600 text-white hover:bg-amber-500"
         >
-          {loading ? "Categorizing…" : "Fix Categories"}
-        </button>
-      </div>
+          {loading ? (
+            <>
+              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              Categorizing…
+            </>
+          ) : (
+            "Fix Categories"
+          )}
+        </Button>
+      </AlertDescription>
       {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
-    </div>
+    </Alert>
   );
 }

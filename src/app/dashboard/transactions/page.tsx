@@ -1,4 +1,15 @@
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ArrowLeftRight, TrendingDown, TrendingUp } from "lucide-react";
 
 function formatAmount(amount: number): string {
   const abs = Math.abs(amount).toLocaleString("en-CA", {
@@ -9,7 +20,6 @@ function formatAmount(amount: number): string {
 }
 
 function formatDate(dateStr: string): string {
-  // Parse as local date to avoid timezone shifts
   const [year, month, day] = dateStr.split("-").map(Number);
   return new Date(year, month - 1, day).toLocaleDateString("en-CA", {
     month: "short",
@@ -19,7 +29,9 @@ function formatDate(dateStr: string): string {
 }
 
 function formatAccountType(type: string): string {
-  return type === "credit_card" ? "Credit Card" : type.charAt(0).toUpperCase() + type.slice(1);
+  return type === "credit_card"
+    ? "Credit Card"
+    : type.charAt(0).toUpperCase() + type.slice(1);
 }
 
 type StatementInfo = { institution: string; statement_month: string };
@@ -56,117 +68,155 @@ export default async function TransactionsPage(): Promise<React.JSX.Element> {
 
   return (
     <div className="p-6 md:p-10">
-      <div className="mx-auto max-w-4xl space-y-8">
+      <div className="mx-auto max-w-5xl space-y-8">
         {/* Header */}
-        <header className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">
+        <header className="space-y-1 pt-2">
+          <h1 className="text-3xl font-semibold tracking-tight text-[var(--foreground)]">
             Transactions
           </h1>
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-[var(--muted-foreground)]">
             All extracted transactions across your statements
           </p>
         </header>
 
         {/* Summary cards */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {[
-            { label: "Total", value: rows.length.toString(), sub: "transactions" },
-            {
-              label: "Spent",
-              value: `$${Math.abs(totalOut).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-              sub: "money out",
-            },
-            {
-              label: "Received",
-              value: `$${totalIn.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-              sub: "money in",
-            },
-          ].map((card) => (
-            <div
-              key={card.label}
-              className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5"
-            >
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
-                {card.label}
+          <Card className="border-[var(--border)] bg-[var(--card)]">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
+              <CardTitle className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
+                Total
+              </CardTitle>
+              <ArrowLeftRight className="size-4 text-[var(--primary)]" />
+            </CardHeader>
+            <CardContent className="px-5 pb-5">
+              <p className="text-3xl font-bold tabular-nums text-[var(--foreground)]">
+                {rows.length}
               </p>
-              <p className="mt-2 text-2xl font-semibold text-neutral-50">
-                {card.value}
+              <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">transactions</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-[var(--border)] bg-[var(--card)]">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
+              <CardTitle className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
+                Spent
+              </CardTitle>
+              <TrendingDown className="size-4 text-red-400" />
+            </CardHeader>
+            <CardContent className="px-5 pb-5">
+              <p className="text-3xl font-bold tabular-nums text-red-400">
+                $
+                {Math.abs(totalOut).toLocaleString("en-CA", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
               </p>
-              <p className="mt-0.5 text-xs text-neutral-500">{card.sub}</p>
-            </div>
-          ))}
+              <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">money out</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-[var(--border)] bg-[var(--card)]">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
+              <CardTitle className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
+                Received
+              </CardTitle>
+              <TrendingUp className="size-4 text-[var(--accent)]" />
+            </CardHeader>
+            <CardContent className="px-5 pb-5">
+              <p className="text-3xl font-bold tabular-nums text-[var(--accent)]">
+                $
+                {totalIn.toLocaleString("en-CA", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </p>
+              <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">money in</p>
+            </CardContent>
+          </Card>
         </section>
 
         {/* Table or empty state */}
         {rows.length === 0 ? (
-          <div className="rounded-2xl border border-neutral-800 bg-neutral-900 px-8 py-16 text-center">
-            <p className="text-sm font-medium text-neutral-300">
-              No transactions yet
-            </p>
-            <p className="mt-1 text-sm text-neutral-500">
-              Upload a statement on the{" "}
-              <a href="/dashboard" className="underline hover:text-neutral-300">
-                Overview
-              </a>{" "}
-              tab to get started.
-            </p>
-          </div>
+          <Card className="border-[var(--border)] bg-[var(--card)]">
+            <CardContent className="px-8 py-16 text-center">
+              <p className="text-sm font-medium text-[var(--foreground)]">
+                No transactions yet
+              </p>
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                Upload a statement on the{" "}
+                <a
+                  href="/dashboard"
+                  className="text-[var(--primary)] underline hover:opacity-80"
+                >
+                  Overview
+                </a>{" "}
+                tab to get started.
+              </p>
+            </CardContent>
+          </Card>
         ) : (
-          <section className="overflow-hidden rounded-2xl border border-neutral-800">
+          <Card className="border-[var(--border)] bg-[var(--card)] overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-neutral-800 bg-neutral-900">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-[var(--border)] hover:bg-transparent">
                     {["Date", "Merchant", "Category", "Amount", "Account", "Institution"].map(
                       (col) => (
-                        <th
+                        <TableHead
                           key={col}
-                          className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.1em] text-neutral-500"
+                          className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted-foreground)]"
                         >
                           {col}
-                        </th>
+                        </TableHead>
                       )
                     )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-800 bg-neutral-900">
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {rows.map((t) => (
-                    <tr
+                    <TableRow
                       key={t.id}
-                      className="transition-colors hover:bg-neutral-800/50"
+                      className="border-[var(--border)] hover:bg-[var(--secondary)]/50 transition-colors"
                     >
-                      <td className="whitespace-nowrap px-4 py-3 text-neutral-400">
+                      <TableCell className="whitespace-nowrap text-[var(--muted-foreground)]">
                         {formatDate(t.date)}
-                      </td>
-                      <td className="max-w-[200px] truncate px-4 py-3 text-neutral-200">
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate font-medium text-[var(--foreground)]">
                         {t.merchant_clean ?? t.merchant_raw}
-                      </td>
-                      <td className="px-4 py-3 text-neutral-400">
-                        {t.category ?? (
-                          <span className="text-neutral-600">—</span>
+                      </TableCell>
+                      <TableCell>
+                        {t.category ? (
+                          <Badge
+                            variant="secondary"
+                            className="border-0 bg-[var(--secondary)] text-[var(--muted-foreground)] text-xs"
+                          >
+                            {t.category}
+                          </Badge>
+                        ) : (
+                          <span className="text-[var(--muted-foreground)]/40">—</span>
                         )}
-                      </td>
-                      <td
-                        className={`whitespace-nowrap px-4 py-3 font-medium tabular-nums ${
-                          t.amount < 0 ? "text-red-400" : "text-emerald-400"
+                      </TableCell>
+                      <TableCell
+                        className={`whitespace-nowrap font-semibold tabular-nums ${
+                          t.amount < 0 ? "text-red-400" : "text-[var(--accent)]"
                         }`}
                       >
                         {formatAmount(t.amount)}
-                      </td>
-                      <td className="px-4 py-3 text-neutral-400">
+                      </TableCell>
+                      <TableCell className="text-[var(--muted-foreground)]">
                         {formatAccountType(t.account_type)}
-                      </td>
-                      <td className="px-4 py-3 text-neutral-400">
+                      </TableCell>
+                      <TableCell className="text-[var(--muted-foreground)]">
                         {t.statements?.[0]?.institution ?? (
-                          <span className="text-neutral-600">—</span>
+                          <span className="text-[var(--muted-foreground)]/40">—</span>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
-          </section>
+          </Card>
         )}
       </div>
     </div>

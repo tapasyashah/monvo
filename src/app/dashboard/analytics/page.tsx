@@ -72,17 +72,17 @@ export default async function AnalyticsPage(): Promise<React.JSX.Element> {
   return (
     <div className="p-6 md:p-10">
       <div className="mx-auto max-w-4xl space-y-8">
-        <header>
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">Analytics</h1>
-          <p className="text-sm text-neutral-400">Spending breakdown across your statements</p>
+        <header className="space-y-1 pt-2">
+          <h1 className="text-3xl font-semibold tracking-tight text-[var(--foreground)]">Analytics</h1>
+          <p className="text-sm text-[var(--muted-foreground)]">Spending breakdown across your statements</p>
         </header>
 
         {rows.length === 0 ? (
-          <div className="rounded-2xl border border-neutral-800 bg-neutral-900 px-8 py-16 text-center">
-            <p className="text-sm font-medium text-neutral-300">No data yet</p>
-            <p className="mt-1 text-sm text-neutral-500">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-8 py-16 text-center">
+            <p className="text-sm font-medium text-[var(--foreground)]">No data yet</p>
+            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
               Upload a statement on the{" "}
-              <a href="/dashboard" className="underline hover:text-neutral-300">
+              <a href="/dashboard" className="text-[var(--primary)] underline hover:opacity-80">
                 Overview
               </a>{" "}
               tab to get started.

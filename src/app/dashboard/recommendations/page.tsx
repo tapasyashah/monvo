@@ -33,18 +33,18 @@ export default async function RecommendationsPage(): Promise<React.JSX.Element> 
   return (
     <div className="p-6 md:p-10">
       <div className="mx-auto max-w-4xl space-y-8">
-        <header className="flex items-start justify-between">
+        <header className="flex items-start justify-between pt-2">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">Recommendations</h1>
-            <p className="text-sm text-neutral-400">AI-generated insights based on your spending</p>
+            <h1 className="text-3xl font-semibold tracking-tight text-[var(--foreground)]">Recommendations</h1>
+            <p className="text-sm text-[var(--muted-foreground)]">AI-generated insights based on your spending</p>
           </div>
           <GenerateRecommendationsButton />
         </header>
 
         {recs.length === 0 ? (
-          <div className="rounded-2xl border border-neutral-800 bg-neutral-900 px-8 py-16 text-center">
-            <p className="text-sm font-medium text-neutral-300">No recommendations yet</p>
-            <p className="mt-1 text-sm text-neutral-500">Click &quot;Generate Recommendations&quot; to analyse your spending.</p>
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-8 py-16 text-center">
+            <p className="text-sm font-medium text-[var(--foreground)]">No recommendations yet</p>
+            <p className="mt-1 text-sm text-[var(--muted-foreground)]">Click &quot;Generate Recommendations&quot; to analyse your spending.</p>
           </div>
         ) : (
           <div className="space-y-4">

@@ -15,7 +15,7 @@ export default async function DashboardLayout({
   if (!user) redirect("/login");
 
   return (
-    <div className="min-h-screen bg-neutral-950">
+    <div className="min-h-screen bg-[var(--background)]">
       <DashboardNav />
       {children}
     </div>
