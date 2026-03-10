@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import UploadStatement from "@/components/UploadStatement";
+import AskMonvoCard from "@/components/AskMonvoCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { FileText, ArrowLeftRight, Sparkles, Upload } from "lucide-react";
@@ -119,6 +120,11 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
               <UploadStatement />
             </CardContent>
           </Card>
+        </section>
+
+        {/* Ask Monvo */}
+        <section>
+          <AskMonvoCard />
         </section>
       </div>
     </div>
