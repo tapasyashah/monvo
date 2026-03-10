@@ -35,6 +35,25 @@ export function detectFormat(text: string): PdfFormat {
   return 'cibc_bank';
 }
 
+export function resolveInstitutionAndType(
+  format: PdfFormat,
+  text: string
+): { institution: string; account_type: 'chequing' | 'savings' | 'credit_card' } {
+  switch (format) {
+    case 'cibc_bank': {
+      const isSavings =
+        text.includes('SAVINGS') ||
+        text.includes('eSavings') ||
+        text.includes('High Interest Savings');
+      return { institution: 'CIBC', account_type: isSavings ? 'savings' : 'chequing' };
+    }
+    case 'cibc_visa':
+      return { institution: 'CIBC', account_type: 'credit_card' };
+    case 'amex':
+      return { institution: 'American Express', account_type: 'credit_card' };
+  }
+}
+
 const SYSTEM_PROMPT = `You are a financial data extraction assistant. Extract all transactions from the bank statement text and return them as a JSON array.
 
 CRITICAL: Return ONLY a raw JSON array. No markdown, no code fences, no explanation. Your entire response must start with [ and end with ].

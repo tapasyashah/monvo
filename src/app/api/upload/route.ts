@@ -5,6 +5,7 @@ import {
   extractTextFromPdf,
   detectFormat,
   parseTransactionsWithClaude,
+  resolveInstitutionAndType,
 } from "@/lib/extract";
 
 const VALID_ACCOUNT_TYPES = ["chequing", "savings", "credit_card"] as const;
@@ -61,27 +62,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // Validate: institution must be a non-empty string
-  if (typeof institution !== "string" || institution.trim().length === 0) {
-    return NextResponse.json(
-      { error: "Bad request: institution is required" },
-      { status: 400 }
-    );
-  }
-
-  // Validate: account_type must be one of the allowed values
-  if (typeof accountTypeRaw !== "string" || !isValidAccountType(accountTypeRaw)) {
-    return NextResponse.json(
-      {
-        error:
-          "Bad request: account_type must be one of chequing, savings, credit_card",
-      },
-      { status: 400 }
-    );
-  }
-
-  const account_type: AccountType = accountTypeRaw;
-
   // Generate a unique ID for this statement
   const statementId = crypto.randomUUID();
 
@@ -93,6 +73,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // Read file into Buffer
   const buffer = Buffer.from(await file.arrayBuffer());
+
+  // Auto-detect or use provided institution/account_type
+  let cachedText: string | null = null;
+  let institution_resolved: string;
+  let account_type_resolved: AccountType;
+
+  const providedInstitution = typeof institution === "string" && institution.trim().length > 0;
+  const providedAccountType = typeof accountTypeRaw === "string" && isValidAccountType(accountTypeRaw);
+
+  if (providedInstitution && providedAccountType) {
+    institution_resolved = (institution as string).trim();
+    account_type_resolved = accountTypeRaw as AccountType;
+  } else {
+    cachedText = await extractTextFromPdf(buffer);
+    const format = detectFormat(cachedText);
+    const resolved = resolveInstitutionAndType(format, cachedText);
+    institution_resolved = resolved.institution;
+    account_type_resolved = resolved.account_type;
+  }
 
   // Upload PDF to Supabase Storage (bypasses RLS via admin client)
   const storagePath = `${user.id}/${statementId}.pdf`;
@@ -116,8 +115,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .insert({
       id: statementId,
       user_id: user.id,
-      institution: institution.trim(),
-      account_type: account_type,
+      institution: institution_resolved,
+      account_type: account_type_resolved,
       statement_month: statement_month,
       status: "processing",
     });
@@ -132,12 +131,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Inline extraction — avoids self-fetch issues in Next.js App Router
   let transactionCount = 0;
   try {
-    const text = await extractTextFromPdf(buffer);
-    const format = detectFormat(text);
+    const textForParse = cachedText ?? await extractTextFromPdf(buffer);
+    const format = detectFormat(textForParse);
     const transactions = await parseTransactionsWithClaude(
-      text,
+      textForParse,
       format,
-      account_type
+      account_type_resolved
     );
 
     transactionCount = transactions.length;

@@ -44,6 +44,7 @@ type TransactionRow = {
   category: string | null;
   amount: number;
   account_type: string;
+  transaction_type: string | null;
   statements: StatementInfo[];
 };
 
@@ -53,7 +54,7 @@ export default async function TransactionsPage(): Promise<React.JSX.Element> {
   const { data } = await supabase
     .from("transactions")
     .select(
-      "id, date, merchant_raw, merchant_clean, category, amount, account_type, statements(institution, statement_month)"
+      "id, date, merchant_raw, merchant_clean, category, amount, account_type, transaction_type, statements(institution, statement_month)"
     )
     .order("date", { ascending: false });
 
@@ -181,8 +182,15 @@ export default async function TransactionsPage(): Promise<React.JSX.Element> {
                       <TableCell className="whitespace-nowrap text-[var(--muted-foreground)]">
                         {formatDate(t.date)}
                       </TableCell>
-                      <TableCell className="max-w-[200px] truncate font-medium text-[var(--foreground)]">
-                        {t.merchant_clean ?? t.merchant_raw}
+                      <TableCell className="max-w-[200px] font-medium text-[var(--foreground)]">
+                        <span className="flex items-center gap-2">
+                          <span className="truncate">{t.merchant_clean ?? t.merchant_raw}</span>
+                          {t.transaction_type === "refund" && (
+                            <Badge variant="outline" className="shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-400 text-xs">
+                              REFUND
+                            </Badge>
+                          )}
+                        </span>
                       </TableCell>
                       <TableCell>
                         {t.category ? (
