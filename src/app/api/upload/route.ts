@@ -163,6 +163,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         category: t.category,
         amount: t.amount,
         account_type: t.account_type,
+        transaction_type: t.transaction_type,
         is_recurring: false,
       }));
 

@@ -26,6 +26,15 @@ export async function POST(): Promise<NextResponse> {
 
   const txRows = transactions ?? [];
 
+  // Fetch user profile (optional — don't fail if missing)
+  const { data: profileData } = await supabase
+    .from("user_profiles")
+    .select("banks, loans, registered_accounts, investments")
+    .eq("user_id", user.id)
+    .single();
+
+  const profile = profileData ?? null;
+
   if (txRows.length < 5) {
     return NextResponse.json(
       { message: "Not enough data to generate recommendations" },
@@ -34,7 +43,7 @@ export async function POST(): Promise<NextResponse> {
   }
 
   try {
-    const summary = buildTransactionSummary(txRows);
+    const summary = buildTransactionSummary(txRows, profile ?? undefined);
     const rows = await generateRecommendations(summary);
 
     // Delete old recommendations for this user

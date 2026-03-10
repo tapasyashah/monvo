@@ -10,6 +10,13 @@ export interface RecommendationInsert {
   estimated_impact: number | null;
 }
 
+export interface UserProfile {
+  banks: Array<{ institution: string; account_types: string[]; card_name?: string }>;
+  loans: Array<{ type: string; balance: number; rate: number; monthly_payment: number }>;
+  registered_accounts: Array<{ type: string; balance: number; contribution_room?: number }>;
+  investments: Array<{ type: string; name: string; monthly_contribution: number }>;
+}
+
 interface TransactionInput {
   date: string;
   merchant_clean: string | null;
@@ -19,7 +26,7 @@ interface TransactionInput {
   is_recurring: boolean;
 }
 
-export function buildTransactionSummary(transactions: TransactionInput[]) {
+export function buildTransactionSummary(transactions: TransactionInput[], profile?: UserProfile) {
   // Build monthly flow map
   const monthMap = new Map<string, { totalIn: number; totalOut: number }>();
   for (const t of transactions) {
@@ -103,8 +110,10 @@ export function buildTransactionSummary(transactions: TransactionInput[]) {
     })
   );
 
-  // Has chequing
+  // Has chequing (used as a signal for HISA recommendations)
   const hasChequing = transactions.some((t) => t.account_type === 'chequing');
+  // Has credit card data
+  const hasCreditCard = transactions.some((t) => t.account_type === 'credit_card');
 
   // Average monthly surplus
   const avgMonthlySurplus =
@@ -113,6 +122,18 @@ export function buildTransactionSummary(transactions: TransactionInput[]) {
           (monthlyFlow.reduce((sum, m) => sum + m.net, 0) / monthlyFlow.length) * 100
         ) / 100
       : 0;
+
+  // Profile context
+  const profileContext = profile ? {
+    ownedCards: profile.banks
+      .filter(b => b.account_types.includes('Credit Card') && b.card_name)
+      .map(b => b.card_name!),
+    hasRRSP: profile.registered_accounts.some(a => a.type === 'RRSP'),
+    hasTFSA: profile.registered_accounts.some(a => a.type === 'TFSA'),
+    totalLoanDebt: profile.loans.reduce((sum, l) => sum + l.balance, 0),
+    monthlyLoanPayment: profile.loans.reduce((sum, l) => sum + l.monthly_payment, 0),
+    monthlyInvestmentContribution: profile.investments.reduce((sum, i) => sum + i.monthly_contribution, 0),
+  } : null;
 
   return {
     dateRange,
@@ -123,10 +144,12 @@ export function buildTransactionSummary(transactions: TransactionInput[]) {
     topCategories,
     hasChequing,
     avgMonthlySurplus,
+    profileContext,
+    hasCreditCard,
   };
 }
 
-const SYSTEM_PROMPT = `You are a personal finance advisor for Canadian consumers. Generate actionable recommendations based on the user's spending summary.
+const SYSTEM_PROMPT = `You are a personal finance advisor for Canadian consumers. Generate actionable, personalized recommendations based on the user's spending summary.
 
 Return ONLY a raw JSON array. No markdown, no code fences. Your entire response must start with [ and end with ].
 
@@ -134,18 +157,32 @@ Each recommendation object must have EXACTLY these fields:
 {
   "type": "hisa" | "subscription" | "credit_card" | "debt",
   "title": "≤60 character title",
-  "body": "2-3 sentences with specific numbers from the data",
+  "body": "2-3 sentences with specific dollar amounts from the data",
   "trigger_pattern": "brief description of what data triggered this",
   "estimated_impact": 120.00 or null
 }
 
-Rules:
-1. hisa: recommend ONLY if avgMonthlySurplus > 200. Suggest EQ Bank HISA (3% interest). estimated_impact = avgMonthlySurplus * 0.03 (monthly interest earned on surplus).
-2. subscription: flag if any recurringCharge has monthlyAmount < 50. Title like "Review [Merchant] subscription". estimated_impact = monthlyAmount * 12.
-3. credit_card: recommend ONLY if hasChequing is true AND topCategories includes at least one of: dining, restaurants, food, groceries, travel, gas. Suggest a specific Canadian card (Scotia Gold Amex for dining/groceries, TD Aeroplan for travel, Rogers World Elite for everything else). estimated_impact = relevant category total * 0.04 (4% cash back estimate).
-4. debt: flag if any category spending increased >20% comparing most recent month to previous month. estimated_impact = null.
-5. Generate only recommendations that are triggered by the data. Do not invent ones that aren't triggered.
-6. Maximum 4 recommendations total.`;
+Core rules (always apply):
+1. hisa: recommend ONLY if avgMonthlySurplus > 200. Suggest EQ Bank HISA (3.5% interest) or a TFSA HISA. estimated_impact = avgMonthlySurplus * 0.035 (annual interest if investing monthly surplus). Use real numbers: "You average $X surplus/month — parking it in EQ Bank HISA at 3.5% earns $Y/year."
+2. subscription: flag recurring charges that look like subscriptions (streaming, gym, apps, cloud storage). Flag ALL of them if monthlyAmount < 100. Title: "Review [Merchant] — $X/mo". estimated_impact = monthlyAmount * 12. Body must name the specific merchant and cost.
+3. credit_card: recommend ONLY if topCategories includes any of: Restaurants, Groceries, Transportation, Travel, Entertainment, Shopping (case-insensitive match). Use hasCreditCard to know if the user already has credit card transactions. Suggest the best-fit Canadian card:
+   - "Restaurants" or "Groceries" in top 3 → Scotia Gold Amex (6x points on food/groceries, ~4% back)
+   - "Travel" in top 3 → TD Aeroplan Visa Infinite (up to 1.5 Aeroplan miles/dollar)
+   - "Transportation" or "Shopping" in top 3 → Rogers World Elite Mastercard (3% on USD purchases, 1.5% everywhere)
+   estimated_impact = (sum of relevant category totals) * 0.04
+   If profileContext is non-null and ownedCards already includes the suggested card name → pick the next-best alternative.
+4. debt: flag if any category spending increased >25% month-over-month (most recent vs previous month). estimated_impact = null. Body must name the category and the % increase.
+
+Profile-aware rules (only apply when profileContext is non-null):
+5. TFSA gap: if profileContext.hasTFSA is false AND avgMonthlySurplus > 0 AND no hisa recommendation was already generated → add type "hisa" with title "Open a TFSA — Tax-Free Growth" explaining that investing the monthly surplus of $X tax-free in a TFSA beats a regular savings account.
+6. Debt servicing: if profileContext.monthlyLoanPayment > 0 AND profileContext.monthlyLoanPayment > avgMonthlySurplus * 0.35 → add type "debt" with title "High Debt-to-Income Ratio" explaining that loan payments of $X represent >35% of surplus. estimated_impact = null.
+7. RRSP gap: if profileContext.hasRRSP is false AND any monthlyFlow entry shows totalIn > 2000 → add type "hisa" (savings/investment category) with title "Start Contributing to an RRSP" explaining the tax-deduction benefit. Only add if fewer than 4 recommendations generated so far.
+
+Hard constraints:
+- Maximum 4 recommendations total. Prioritize: credit_card > hisa > subscription > debt.
+- Never recommend a card the user already owns (check profileContext.ownedCards).
+- Every body field MUST include specific dollar amounts from the summary data.
+- Only generate recommendations triggered by actual data patterns. Never invent triggers.`;
 
 function isValidRecommendation(r: unknown): r is RecommendationInsert {
   if (typeof r !== 'object' || r === null) return false;

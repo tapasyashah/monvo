@@ -8,6 +8,7 @@ import {
   FileText,
   BarChart2,
   Sparkles,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ const tabs = [
   { label: "Statements", href: "/dashboard/statements", icon: FileText },
   { label: "Analytics", href: "/dashboard/analytics", icon: BarChart2 },
   { label: "Recommendations", href: "/dashboard/recommendations", icon: Sparkles },
+  { label: "Profile", href: "/dashboard/profile", icon: User },
 ];
 
 export default function DashboardNav() {

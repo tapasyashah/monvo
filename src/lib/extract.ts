@@ -8,6 +8,7 @@ export interface ParsedTransaction {
   amount: number;          // negative = outflow, positive = inflow
   category: string | null; // from CIBC Visa Spend Categories column, else null
   account_type: 'chequing' | 'savings' | 'credit_card';
+  transaction_type: 'debit' | 'credit' | 'refund';
 }
 
 export type PdfFormat = 'cibc_bank' | 'cibc_visa' | 'amex';
@@ -45,7 +46,8 @@ Each transaction object must have EXACTLY these fields:
   "merchant_clean": "Readable Merchant Name",
   "amount": -12.34,
   "category": null,
-  "account_type": "chequing"
+  "account_type": "chequing",
+  "transaction_type": "debit"
 }
 
 Rules:
@@ -74,7 +76,11 @@ Rules:
     - "PAY [Company]" → strip "PAY " prefix, use company name
     - "PREAUTHORIZED DEBIT" → "Pre-authorized Debit"
     - If none of the above patterns match, just title-case the merchant_raw and strip trailing numbers/codes
-11. The "account_type" field must be exactly the value passed in the context below`;
+11. The "account_type" field must be exactly the value passed in the context below
+12. The "transaction_type" field:
+    - "refund": positive amounts with keywords REFUND, REVERSAL, CHARGEBACK, CREDIT ADJ, ADJUSTMENT CR, RETURN, CREDIT MEMO in merchant_raw
+    - "credit": other positive amounts (deposits, income, e-transfers received, card payments)
+    - "debit": negative amounts (purchases, fees, withdrawals)`;
 
 function isValidTransaction(t: unknown): t is ParsedTransaction {
   if (typeof t !== 'object' || t === null) return false;
@@ -87,7 +93,10 @@ function isValidTransaction(t: unknown): t is ParsedTransaction {
     (obj.category === null || typeof obj.category === 'string') &&
     (obj.account_type === 'chequing' ||
       obj.account_type === 'savings' ||
-      obj.account_type === 'credit_card')
+      obj.account_type === 'credit_card') &&
+    (obj.transaction_type === 'debit' ||
+      obj.transaction_type === 'credit' ||
+      obj.transaction_type === 'refund')
   );
 }
 
