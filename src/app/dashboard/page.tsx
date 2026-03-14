@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import UploadStatement from "@/components/UploadStatement";
 import AskMonvoCard from "@/components/AskMonvoCard";
+import IncomeCard from "@/components/dashboard/IncomeCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { FileText, ArrowLeftRight, Sparkles, Upload } from "lucide-react";
@@ -67,6 +68,11 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
             Here&apos;s your financial overview
           </p>
         </header>
+
+        {/* Income / Cash Flow */}
+        <section>
+          <IncomeCard />
+        </section>
 
         {/* Stat cards */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">

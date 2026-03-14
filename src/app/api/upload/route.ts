@@ -7,6 +7,8 @@ import {
   parseTransactionsWithClaude,
   resolveInstitutionAndType,
 } from "@/lib/extract";
+import { canonicalMerchant } from "@/lib/merchantNormalize";
+import { classifyTransaction } from "@/lib/classifiers/transfer-classifier";
 
 const VALID_ACCOUNT_TYPES = ["chequing", "savings", "credit_card"] as const;
 type AccountType = (typeof VALID_ACCOUNT_TYPES)[number];
@@ -153,18 +155,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     if (transactions.length > 0) {
-      const rows = transactions.map((t) => ({
-        statement_id: statementId,
-        user_id: user.id,
-        date: t.date,
-        merchant_raw: t.merchant_raw,
-        merchant_clean: t.merchant_clean,
-        category: t.category,
-        amount: t.amount,
-        account_type: t.account_type,
-        transaction_type: t.transaction_type,
-        is_recurring: false,
-      }));
+      const rows = transactions.map((t) => {
+        const cleanName = canonicalMerchant(t.merchant_clean) ?? t.merchant_clean;
+        const classification = classifyTransaction(cleanName, t.amount, t.merchant_raw);
+
+        return {
+          statement_id: statementId,
+          user_id: user.id,
+          date: t.date,
+          merchant_raw: t.merchant_raw,
+          merchant_clean: classification.canonical_name || cleanName,
+          category: classification.category_override ?? t.category,
+          amount: t.amount,
+          account_type: t.account_type,
+          transaction_type: t.transaction_type,
+          is_recurring: false,
+          transfer_type: classification.transfer_type,
+          transfer_confidence: classification.confidence,
+          exclude_from_spending: classification.exclude_from_spending,
+          business_expense: classification.business_expense,
+          business_confirmed: false,
+        };
+      });
 
       const { error: txInsertError } = await supabaseAdmin
         .from("transactions")
