@@ -4,9 +4,12 @@ import SpendingCharts from "@/components/SpendingCharts";
 import RecategorizeButton from "@/components/RecategorizeButton";
 import MoMChart from "@/components/MoMChart";
 import SubscriptionsPanel from "@/components/subscriptions/SubscriptionsPanel";
+import AnalyticsCharts from "@/components/analytics/AnalyticsCharts";
+import SpendHeatmap, { NotableDays } from "@/components/analytics/SpendHeatmap";
 import { getInternalTransferIndices } from "@/lib/transferDetection";
 import { canonicalMerchant } from "@/lib/merchantNormalize";
 import { detectSubscriptions } from "@/lib/subscriptions/subscription-detector";
+import { computeDailySpendData, getNotableDays } from "@/lib/queries/heatmap";
 import type { TransactionInput } from "@/lib/subscriptions/subscription-detector";
 
 type TxRow = {
@@ -183,6 +186,14 @@ export default async function AnalyticsPage(): Promise<React.JSX.Element> {
   ) / 100;
 
   // -------------------------------------------------------------------------
+  // Heatmap data for current month (P2-C)
+  // -------------------------------------------------------------------------
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const heatmapResult = computeDailySpendData(rows, now.getFullYear(), now.getMonth());
+  const notableDays = getNotableDays(heatmapResult.days, heatmapResult.averageDailySpend, 5);
+
+  // -------------------------------------------------------------------------
   // Refunds & credits
   // -------------------------------------------------------------------------
   const refunds = rows
@@ -219,6 +230,14 @@ export default async function AnalyticsPage(): Promise<React.JSX.Element> {
             {uncategorizedCount > 0 && (
               <RecategorizeButton uncategorizedCount={uncategorizedCount} />
             )}
+            {/* P2-A: Waterfall chart with drill-down + Top Merchants */}
+            <AnalyticsCharts
+              transactions={rows}
+              internalTransferIndices={Array.from(internalTransferIndices)}
+              topMerchants={topMerchants}
+            />
+
+            {/* Legacy charts (kept for backward compat) */}
             <SpendingCharts
               spendByCategory={spendByCategory}
               monthlyFlow={monthlyFlow}
@@ -234,6 +253,18 @@ export default async function AnalyticsPage(): Promise<React.JSX.Element> {
                 <MoMChart momChartData={momChartData} top5Cats={top5Cats} />
               </div>
             )}
+
+            {/* P2-C: Spend Heatmap Calendar */}
+            {heatmapResult.days.length > 0 && (
+              <SpendHeatmap
+                days={heatmapResult.days}
+                averageDailySpend={heatmapResult.averageDailySpend}
+                month={currentMonthKey}
+              />
+            )}
+
+            {/* P2-C: Notable Days */}
+            <NotableDays days={notableDays} />
 
             {/* Subscriptions & Recurring */}
             <SubscriptionsPanel

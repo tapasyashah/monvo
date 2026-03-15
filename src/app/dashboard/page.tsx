@@ -3,6 +3,7 @@ import UploadStatement from "@/components/UploadStatement";
 import AskMonvoCard from "@/components/AskMonvoCard";
 import IncomeCard from "@/components/dashboard/IncomeCard";
 import CashFlowPanel from "@/components/cashflow/CashFlowPanel";
+import NetWorthPanel from "@/components/networth/NetWorthPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { FileText, ArrowLeftRight, Sparkles, Upload } from "lucide-react";
@@ -78,6 +79,11 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
         {/* Cash Flow Panel */}
         <section>
           <CashFlowPanel />
+        </section>
+
+        {/* Net Worth Panel (P2-D) */}
+        <section>
+          <NetWorthPanel />
         </section>
 
         {/* Stat cards */}
