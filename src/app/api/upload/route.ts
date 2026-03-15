@@ -9,6 +9,12 @@ import {
 } from "@/lib/extract";
 import { canonicalMerchant } from "@/lib/merchantNormalize";
 import { classifyTransaction } from "@/lib/classifiers/transfer-classifier";
+import {
+  detectStatementType,
+  isInvestmentStatement,
+} from "@/lib/parsers/statement-types";
+import { parseWealthsimpleStatement } from "@/lib/parsers/wealthsimple-parser";
+import { parsePrimericaStatement } from "@/lib/parsers/primerica-parser";
 
 const VALID_ACCOUNT_TYPES = ["chequing", "savings", "credit_card"] as const;
 type AccountType = (typeof VALID_ACCOUNT_TYPES)[number];
@@ -94,6 +100,101 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     institution_resolved = resolved.institution;
     account_type_resolved = resolved.account_type;
   }
+
+  // --- Investment statement branch ---
+  // Detect whether this is an investment/annual statement (Wealthsimple, Primerica).
+  // If so, parse with the dedicated parser, upsert into user_assets, and return early.
+  const pdfTextForDetection = cachedText ?? await extractTextFromPdf(buffer);
+  // Cache for later use in bank statement path
+  if (!cachedText) cachedText = pdfTextForDetection;
+
+  const statementType = detectStatementType(pdfTextForDetection);
+
+  if (isInvestmentStatement(statementType)) {
+    try {
+      const investmentData =
+        statementType === "wealthsimple_annual"
+          ? parseWealthsimpleStatement(pdfTextForDetection)
+          : parsePrimericaStatement(pdfTextForDetection);
+
+      // Upload PDF to storage
+      const storagePath = `${user.id}/${statementId}.pdf`;
+      const { error: storageError } = await supabaseAdmin.storage
+        .from("statements")
+        .upload(storagePath, buffer, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
+
+      if (storageError) {
+        return NextResponse.json(
+          { error: `Storage upload failed: ${storageError.message}` },
+          { status: 500 }
+        );
+      }
+
+      // Upsert into user_assets table.
+      // Uses institution + user_id as the natural key so re-uploading an
+      // updated annual statement overwrites the previous snapshot.
+      const { error: assetError } = await supabaseAdmin
+        .from("user_assets")
+        .upsert(
+          {
+            user_id: user.id,
+            institution: investmentData.institution,
+            statement_type: investmentData.statement_type,
+            period_start: investmentData.period_start || null,
+            period_end: investmentData.period_end || null,
+            total_value: investmentData.total_value,
+            ytd_contributions: investmentData.ytd_contributions,
+            ytd_withdrawals: investmentData.ytd_withdrawals,
+            ytd_gains: investmentData.ytd_gains,
+            tfsa_room_used: investmentData.tfsa_room_used ?? null,
+            holdings: investmentData.holdings ?? null,
+            storage_path: storagePath,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,institution" }
+        );
+
+      if (assetError) {
+        return NextResponse.json(
+          { error: `Asset upsert failed: ${assetError.message}` },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          statementId,
+          statementType,
+          investmentSummary: {
+            institution: investmentData.institution,
+            total_value: investmentData.total_value,
+            ytd_contributions: investmentData.ytd_contributions,
+            ytd_withdrawals: investmentData.ytd_withdrawals,
+            ytd_gains: investmentData.ytd_gains,
+            holdings_count: investmentData.holdings?.length ?? 0,
+          },
+          status: "complete",
+        },
+        { status: 200 }
+      );
+    } catch (investmentError) {
+      return NextResponse.json(
+        {
+          error: `Investment statement parsing failed: ${
+            investmentError instanceof Error
+              ? investmentError.message
+              : String(investmentError)
+          }`,
+        },
+        { status: 500 }
+      );
+    }
+  }
+
+  // --- Bank / credit card statement flow (existing logic) ---
 
   // Upload PDF to Supabase Storage (bypasses RLS via admin client)
   const storagePath = `${user.id}/${statementId}.pdf`;

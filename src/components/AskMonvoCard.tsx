@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,12 +11,27 @@ interface AskMonvoResponse {
   best_path: string;
   watch_out_for: string;
   data_quality: "good" | "limited";
+  direct_answer?: boolean;
+}
+
+interface HistoryMessage {
+  role: "user" | "assistant";
+  content: string;
 }
 
 const EXAMPLE_PROMPTS = [
   "I'm thinking about buying a car next year...",
   "What if I moved to a more expensive apartment?",
   "Should I pay off my credit card or invest the money?",
+];
+
+const QUICK_ACTION_CHIPS = [
+  "Am I on track this month?",
+  "Where is my money going?",
+  "Which subscriptions can I cut?",
+  "How are my Bare Thoughts costs?",
+  "What's my savings rate?",
+  "Show me unusual charges",
 ];
 
 function VerdictBadge({ verdict }: { verdict: string }) {
@@ -45,18 +60,29 @@ export default function AskMonvoCard() {
   const [response, setResponse] = useState<AskMonvoResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState<HistoryMessage[]>([]);
+  const chipScrollRef = useRef<HTMLDivElement>(null);
 
-  async function handleSubmit() {
-    if (!query.trim() || loading || rateLimited) return;
+  async function handleSubmit(overrideQuery?: string) {
+    const q = (overrideQuery ?? query).trim();
+    if (!q || loading || rateLimited) return;
     setLoading(true);
     setResponse(null);
     setError(null);
+
+    // If using override (chip click), update the input field
+    if (overrideQuery) {
+      setQuery(overrideQuery);
+    }
 
     try {
       const res = await fetch("/api/ask-monvo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({
+          query: q,
+          history: conversationHistory.slice(-6),
+        }),
       });
 
       if (res.status === 429) {
@@ -73,6 +99,23 @@ export default function AskMonvoCard() {
 
       const data = await res.json() as AskMonvoResponse;
       setResponse(data);
+
+      // Maintain 3-turn conversation history (6 messages: 3 user + 3 assistant)
+      const assistantContent = data.direct_answer
+        ? data.verdict
+        : [data.verdict, data.impact, data.best_path, data.watch_out_for]
+            .filter(Boolean)
+            .join("\n");
+
+      setConversationHistory((prev) => {
+        const updated = [
+          ...prev,
+          { role: "user" as const, content: q },
+          { role: "assistant" as const, content: assistantContent },
+        ];
+        // Keep last 3 turns (6 messages)
+        return updated.slice(-6);
+      });
     } catch {
       setError("Could not generate a response. Try again.");
     } finally {
@@ -96,11 +139,34 @@ export default function AskMonvoCard() {
             <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">
               Describe an upcoming expense or decision. Monvo will tell you how it fits your finances.
             </p>
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]/80">
+              Answers use your transaction history and profile (accounts, loans, investments).
+            </p>
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="px-8 pb-8 pt-6 space-y-4">
+        {/* Quick-action chips */}
+        {!response && (
+          <div
+            ref={chipScrollRef}
+            className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
+            {QUICK_ACTION_CHIPS.map((chip) => (
+              <button
+                key={chip}
+                onClick={() => handleSubmit(chip)}
+                disabled={loading || rateLimited}
+                className="shrink-0 rounded-full border border-[var(--primary)]/20 bg-[var(--primary)]/5 px-3 py-1.5 text-xs font-medium text-[var(--primary)] hover:border-[var(--primary)]/40 hover:bg-[var(--primary)]/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Example prompt chips */}
         {!response && (
           <div className="flex flex-wrap gap-2">
@@ -132,12 +198,12 @@ export default function AskMonvoCard() {
               {remaining} characters remaining
             </span>
             <Button
-              onClick={handleSubmit}
+              onClick={() => handleSubmit()}
               disabled={!query.trim() || loading || rateLimited}
               size="sm"
               className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:bg-[var(--primary)]/90"
             >
-              {loading ? "Monvo is thinking…" : "Ask Monvo"}
+              {loading ? "Monvo is thinking..." : "Ask Monvo"}
             </Button>
           </div>
         </div>
@@ -159,35 +225,52 @@ export default function AskMonvoCard() {
               </div>
             )}
 
-            {/* Verdict */}
-            <div className="space-y-1.5">
-              <VerdictBadge verdict={response.verdict} />
-              <p className="text-sm text-[var(--foreground)] leading-relaxed">{response.verdict}</p>
-            </div>
+            {/* Direct answer (from question template) */}
+            {response.direct_answer ? (
+              <div className="space-y-1.5">
+                <Badge
+                  variant="outline"
+                  className="text-xs font-semibold border-blue-500/30 bg-blue-500/10 text-blue-400"
+                >
+                  INSTANT ANSWER
+                </Badge>
+                <p className="text-sm text-[var(--foreground)] leading-relaxed whitespace-pre-line">
+                  {response.verdict}
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Verdict */}
+                <div className="space-y-1.5">
+                  <VerdictBadge verdict={response.verdict} />
+                  <p className="text-sm text-[var(--foreground)] leading-relaxed">{response.verdict}</p>
+                </div>
 
-            {/* Impact */}
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
-                Impact
-              </p>
-              <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">{response.impact}</p>
-            </div>
+                {/* Impact */}
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+                    Impact
+                  </p>
+                  <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">{response.impact}</p>
+                </div>
 
-            {/* Best Path */}
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
-                Best Path
-              </p>
-              <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">{response.best_path}</p>
-            </div>
+                {/* Best Path */}
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+                    Best Path
+                  </p>
+                  <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">{response.best_path}</p>
+                </div>
 
-            {/* Watch Out For */}
-            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-400">
-                Watch Out For
-              </p>
-              <p className="text-sm text-amber-300/90 leading-relaxed">{response.watch_out_for}</p>
-            </div>
+                {/* Watch Out For */}
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-400">
+                    Watch Out For
+                  </p>
+                  <p className="text-sm text-amber-300/90 leading-relaxed">{response.watch_out_for}</p>
+                </div>
+              </>
+            )}
 
             {/* Ask another */}
             <button
