@@ -1,6 +1,11 @@
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import UploadStatement from "@/components/UploadStatement";
 import AskMonvoCard from "@/components/AskMonvoCard";
+import CardOptimizerPanel from "@/components/cards/CardOptimizerPanel";
+import IncomeCard from "@/components/dashboard/IncomeCard";
+import CashFlowPanel from "@/components/cashflow/CashFlowPanel";
+import NetWorthPanel from "@/components/networth/NetWorthPanel";
+import NudgeFeed from "@/components/nudges/NudgeFeed";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { FileText, ArrowLeftRight, Sparkles, Upload } from "lucide-react";
@@ -68,6 +73,26 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
           </p>
         </header>
 
+        {/* Income / Cash Flow */}
+        <section>
+          <IncomeCard />
+        </section>
+
+        {/* Proactive AI Nudges */}
+        <section>
+          <NudgeFeed />
+        </section>
+
+        {/* Cash Flow Panel */}
+        <section>
+          <CashFlowPanel />
+        </section>
+
+        {/* Net Worth Panel (P2-D) */}
+        <section>
+          <NetWorthPanel />
+        </section>
+
         {/* Stat cards */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {stats.map((stat) => {
@@ -120,6 +145,11 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
               <UploadStatement />
             </CardContent>
           </Card>
+        </section>
+
+        {/* Credit Card Optimizer (P3-D) */}
+        <section>
+          <CardOptimizerPanel />
         </section>
 
         {/* Ask Monvo */}
